@@ -666,9 +666,11 @@ addEventListener('keydown', e => {
   if (screen !== 'play') return;
   if (e.key === 'Escape') { save(); showHint(null); renderHome(); return; }
   if (e.key.length !== 1) return;
+  // Stop browser extensions with one-key shortcuts from taking the key.
   e.preventDefault();
+  e.stopImmediatePropagation();
   if (mode === 'rain') rainKey(e.key); else lessonKey(e.key);
-});
+}, true);
 
 $('btnRain').onclick = startRain;
 $('btnWeak').onclick = startWeak;
