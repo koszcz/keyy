@@ -23,8 +23,10 @@
   button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
     border-radius: 8px; padding: 10px 16px; cursor: pointer; }
   button:hover:not(:disabled) { border-color: #5b8def; }
+  :focus-visible { outline: 2px solid #5b8def; outline-offset: 2px; }
   button:disabled { opacity: .45; cursor: default; }
   button.primary { background: #3157c9; border-color: #3157c9; }
+  button.big { font-size: 18px; padding: 12px 28px; }
   button.link { background: none; border: none; padding: 0; color: var(--dim); text-decoration: underline; }
   kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px;
     font: 13px ui-monospace, Menlo, monospace; }
@@ -32,12 +34,15 @@
   .howto { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px 14px 38px; margin: 16px 0; }
   .howto li { margin: 4px 0; }
   .modes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .level { text-align: left; padding: 10px 12px; }
-  .level .n { font-size: 12px; color: var(--dim); }
-  .level .t { font-weight: 600; }
-  .level .s { letter-spacing: 2px; color: #ffc53d; }
-  .level.locked .s { color: var(--dim); letter-spacing: 0; font-size: 13px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font: 600 15px ui-monospace, Menlo, monospace; text-transform: uppercase;
+    background: linear-gradient(to top, color-mix(in srgb, var(--c) 50%, #1b1e25) var(--p), #1b1e25 var(--p));
+    border: 1px solid color-mix(in srgb, var(--c) 60%, #1b1e25); }
+  .chip.shift { text-transform: none; }
+  .chip.locked { opacity: .3; }
+  .chip.done { background: var(--c); color: #000; }
+  .chip.focus { outline: 2px solid #fff; outline-offset: 1px; }
   .foot { margin-top: 28px; display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 14px; }
 
   .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
@@ -80,9 +85,9 @@
   .handname { font-size: 12px; color: var(--dim); text-align: center; margin-top: 4px; }
 
   #result { text-align: center; padding-top: 40px; }
-  #result .stars { font-size: 56px; letter-spacing: 8px; color: #ffc53d; line-height: 1.2; }
   #result .big { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
   #result .big b { display: block; font-size: 40px; }
+  #result .chips { justify-content: center; margin: 18px 0; }
   #result .actions { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
 </style>
 </head>
@@ -97,23 +102,29 @@
     <li>Look at the screen, not at your keyboard. The keyboard on screen shows the next key and the finger to use.</li>
     <li>After each key, move your finger back to its home key.</li>
     <li>Aim for accuracy first. Speed follows.</li>
+    <li>Practise for 15 to 20 minutes a day.</li>
+    <li>You do not need a mouse. Each button shows its key in brackets.</li>
   </ol>
 
-  <h2>Lessons</h2>
-  <p class="dim">Each lesson adds new keys. Reach 90% accuracy to unlock the next lesson.</p>
-  <div class="levels" id="levels"></div>
+  <h2>Your keys</h2>
+  <div class="chips" id="chips"></div>
+  <p class="dim">You type real words made from your open keys. A key fills up as you master it.
+    To master a key, press it 20 times with 95% accuracy at a steady pace.
+    When you master every open key, the next key opens.</p>
+  <p id="status"></p>
+  <button class="primary big" id="btnPractice">Practise (Enter or 1)</button>
 
   <h2>Practice games</h2>
   <div class="modes">
-    <button id="btnRain">Word rain</button>
-    <button id="btnWeak">Weak keys drill</button>
-    <span class="dim" id="weakInfo"></span>
+    <button id="btnRain">Word rain (2)</button>
+    <button id="btnPairs">Common pairs drill (3)</button>
   </div>
-  <p class="dim" style="margin-top:8px">Word rain: type the falling words before they reach the red line. Both games use the keys you have unlocked.</p>
+  <p class="dim" style="margin-top:8px">Word rain: type the falling words before they reach the red line.
+    Common pairs drill: practise the letter pairs that appear most often in English. Both use your open keys.</p>
 
   <div class="foot">
-    <label><input type="checkbox" id="optGuide"> Show the keyboard and finger guide</label>
-    <button class="link" id="btnUnlock">Unlock all lessons</button>
+    <label><input type="checkbox" id="optGuide"> Show the keyboard and finger guide (G)</label>
+    <button class="link" id="btnUnlock">Open all keys</button>
     <button class="link" id="btnReset">Reset my progress</button>
   </div>
 </section>
@@ -140,13 +151,13 @@
 
 <section id="result" class="hidden">
   <h1 id="resTitle"></h1>
-  <div class="stars" id="resStars"></div>
   <div class="big" id="resBig"></div>
   <p id="resMsg"></p>
+  <div class="chips" id="resChips"></div>
+  <p class="dim" id="resLearning"></p>
   <p class="dim" id="resWeak"></p>
   <div class="actions">
     <button id="resMenu">Menu (Esc)</button>
-    <button id="resRetry">Try again</button>
     <button id="resNext" class="primary"></button>
   </div>
 </section>
@@ -161,6 +172,7 @@ const $ = id => document.getElementById(id);
 const FINGER_KEYS = { 0: '`1qaz', 1: '2wsx', 2: '3edc', 3: '45rtfgvb', 6: '67yuhjnm', 7: '8ik,', 8: '9ol.', 9: "0-=p[]\\;'/" };
 const FINGER_NAMES = ['Left little finger', 'Left ring finger', 'Left middle finger', 'Left index finger', 'Left thumb',
   'Right thumb', 'Right index finger', 'Right middle finger', 'Right ring finger', 'Right little finger'];
+const HOME_KEY = { 0: 'a', 1: 's', 2: 'd', 3: 'f', 6: 'j', 7: 'k', 8: 'l' };
 const FINGER = {};
 for (const f in FINGER_KEYS) for (const ch of FINGER_KEYS[f]) FINGER[ch] = +f;
 const SHIFTED = { '?': '/', '!': '1', ':': ';', '"': "'", '<': ',', '>': '.' };
@@ -262,129 +274,197 @@ function flashWrong(ch) {
   setTimeout(() => el.classList.remove('wrong'), 250);
 }
 
-// ---------- Lessons ----------
-const LEVELS = [
-  { keys: 'fj' }, { keys: 'dk' }, { keys: 'sl' }, { keys: 'a;' }, { keys: 'gh' },
-  { name: 'Home row review' },
-  { keys: 'ei' }, { keys: 'ru' }, { keys: 'ty' }, { keys: 'wo' }, { keys: 'qp' },
-  { name: 'Top row review' },
-  { keys: 'vm' }, { keys: 'c,' }, { keys: 'x.' }, { keys: 'bn' }, { keys: 'z/' },
-  { name: 'All letters review', punct: true },
-  { name: 'Capital letters', caps: true },
-  { keys: '12345' }, { keys: '67890' },
-  { name: 'Everything', caps: true, punct: true },
+// ---------- Keys, in the order they open ----------
+// The home row opens first. After that, one letter opens at a time, most common first.
+// 'shift' stands for capital letters.
+const STAGES = [
+  ['a', 's', 'd', 'f', 'j', 'k', 'l'],
+  ...[...'etionrhucmgpwybvxqz'].map(k => [k]),
+  [',', '.'],
+  ['shift'],
+  [...'12345'],
+  [...'67890'],
 ];
-LEVELS.forEach((l, i) => {
-  l.keys = l.keys || '';
-  l.title = l.name || 'Keys ' + l.keys.toUpperCase().split('').join(' ');
-  l.allowed = new Set((i ? [...LEVELS[i - 1].allowed] : []).concat([...l.keys]));
-});
+const ALL_KEYS = STAGES.flat();
+const NEED_PRESSES = 20;    // presses counted for each key
+const NEED_ACCURACY = 0.95;
+const NEED_MS = 750;        // slowest allowed typical time for one key
+const isDigit = k => k >= '0' && k <= '9';
+const isLetter = k => k.length === 1 && k >= 'a' && k <= 'z';
+const keyLabel = k => (k === 'shift' ? 'Shift' : k.toUpperCase());
 
-const WORDS = ('as ask asks add adds all fall falls hall halls dad dads sad lad lads lass salad flask flag flags glad half ' +
-  'has had hash dash gas gag lag sag shall slash flash glass ash jag ' +
-  'a i he she we me be see sea seas side idea like lake said self life file field held head deal desk disk else ' +
-  'feel fell fill fish gave gear hide high idle keys kid kids lead leaf legs less lied seed seek sell shed skies slide ' +
-  'are air ear era far her fur sir red rid ride read real rule sure user dark dear deer fire free fresh girl grid hair hard ' +
-  'hear here hire huge jail large lure rage rare rise rush shire urge usual ' +
-  'the that this they their there these it its at eat eight fat feet felt first fight fit get gift great hat hate heart ' +
-  'heat hit just kite late last least left let life light list year yes yet yard stay stuff style sight start state street ' +
-  'take talk tall tell test their third tie tied till tire try truth yield early easy day days daily data date dirty key ' +
-  'of or on to do go so no two who how low low old our out own row saw was way we were what when where which while white ' +
-  'with word work world would write wrote hello hold hole follow food foot for forest four good gold hope hour house ' +
-  'idea into job joke know look lot other show slow soft sold some sort story those though thought through throw today ' +
-  'together told too took tool total towards water wife will wish woke wood ' +
-  'up put quit quiet quite quote equal people help keep kept paper part past path pay play please pull pure page pair ' +
-  'party pass power proud apple happy group hope paid ship shop sleep speak spot step stop top trip type upper square ' +
-  'question quality quick require ' +
-  'my am me him them from more most make made man many may me might mind miss moment money month mother move much must ' +
-  'name game home family farm film form same seem small smile some time team term arm warm room summer swim ' +
-  'very ever every even over give gave have live love move view visit voice save seven five river level drive event ' +
-  'evil valley value village heavy leave ' +
-  'can come call car care case city clear close cold color could course cut such each much once since back black check ' +
-  'child chair chance choice church circle class clock coat face fact force ice local luck music place price public ' +
-  'reach rich school second space speech teach touch watch which ' +
+const WORDS = [...new Set((
+  'as ask asks add adds all fall falls dad dads sad lad lads lass salad flask alas fads flak ' +
+  'sea seas see seed seek sell else self lead leaf less desk deal feel fell fled flea sale safe lake jade fake leak ' +
+  'keel easel fade false lease sleek fees eels ease kale sake ' +
+  'tea eat ate set let lets test tell tale talk task take seat feat left felt salt last fast fate late state taste ' +
+  'steak skate staff least jet ' +
+  'is it its if kid kids lid sit fit kit tie tied die lie lied side life file fill kill silk disk list site idea ' +
+  'sail fail tail said like dial field slide jail kite ' +
+  'of to do so too off old sold told fold foot food tool look took lost soft sofa also joke toast total lot solid ' +
+  'an and in on no not one ten net end send lend land sand kind find fine line nine done none note into sent tent ' +
+  'need seen soon join stand inside listen nation ' +
+  'are air ear era far her fur sir red rid ride read real rule sure user dark dear deer fire free fresh girl grid ' +
+  'hair hard hear here hire huge large rare rise rush urge usual door tree road rain train near learn order ' +
+  'has had hash dash half hall shall slash flash ash the that this they their there these then than those other ' +
+  'she he his her hand hold hole hit hat hate heat heart head held hide high hello third ' +
+  'just under until out our four hour house sound turn truth use used unit ' +
+  'can come call car care case city clear close cold color could course cut such each much once since check child ' +
+  'chair chance choice church circle class clock coat face fact force ice local luck music place price reach rich ' +
+  'school second space speech teach touch watch which ' +
+  'my am me him them from more most make made man many may might mind miss moment money month mother move must ' +
+  'name game home family farm film form same seem small smile some time team term arm warm room summer ' +
+  'get gift great glad flag flags gas gag lag sag glass go good gold give gave girl group again against long thing ' +
+  'night light right eight sight fight large change ' +
+  'up put help keep kept paper part past path pay play please pull pure page pair party pass power proud apple ' +
+  'happy hope paid ship shop sleep speak spot step stop top trip type upper people open plan point ' +
+  'we were was way what when where which while white who how low own row saw two with word work world would write ' +
+  'wrote follow show slow know want went win wind woman wonder wife will wish woke wood water answer together ' +
+  'year yes yet yard stay style try yield early easy day days daily dirty key keys story today young any only ' +
+  'be but by big bad bag ball bank base bed been before best better between bird blue boat body book both boy ' +
+  'bring build busy buy able about above baby job number problem table trouble web back black public began begin behind ' +
+  'very ever every even over have live love view visit voice save seven five river level drive event evil valley ' +
+  'value village heavy leave never ' +
   'six box fix mix next text exit extra exact example expect explain fox tax wax relax ' +
-  'be but by big bad bag ball bank base bed been before best better between bird blue boat body book both boy bring ' +
-  'build busy buy able about above baby job number problem table trouble web ' +
-  'an and any in no not now new near need never next night nine none north note nothing notice end hand kind land line ' +
-  'long name open plan point run seen send sign sing son soon sound stand sun ten than then thing think turn under until ' +
-  'want went win wind woman wonder young again against alone along answer began begin behind bring can change ' +
-  'zero zone size lazy crazy prize dozen freeze amaze fuzzy quiz jazz zoo').split(' ');
+  'quit quiet quite quote equal square question quality quick require ' +
+  'zero zone size lazy crazy prize dozen freeze amaze fuzzy quiz jazz zoo'
+).split(' '))];
+
+const PAIRS = ('th he in er an re on at en nd ti es or te of ed is it al ar st to nt ng se ha as ou io le ve co me ' +
+  'de hi ri ro ic ne ea ra ce li ch ll be ma si om ur').split(' ');
 
 const rand = n => Math.floor(Math.random() * n);
 const pick = arr => arr[rand(arr.length)];
 
-// Returns a function that makes one practice token for a lesson.
-// focus: optional string of keys to practise more often.
-function tokener(levelIdx, focus) {
-  const level = LEVELS[levelIdx];
-  const allowed = level.allowed;
-  const newKeys = focus != null ? focus : level.keys;
-  const letters = [...allowed].filter(c => c >= 'a' && c <= 'z');
-  const words = WORDS.filter(w => [...w].every(c => allowed.has(c)));
-  const withNew = words.filter(w => [...newKeys].some(c => w.includes(c)));
-  const digitsOnly = newKeys && [...newKeys].every(c => c >= '0' && c <= '9');
-  const pseudo = () => {
-    let t = '';
-    const len = 2 + rand(3);
-    for (let i = 0; i < len; i++) {
-      t += digitsOnly || Math.random() < 0.6 || !letters.length ? pick([...newKeys]) : pick(letters);
-    }
-    return t;
-  };
-  let last = '';
-  return () => {
-    let t;
-    for (let tries = 0; tries < 6; tries++) {
-      const r = Math.random();
-      if (newKeys && (words.length < 15 || r < (digitsOnly ? 0.5 : 0.3))) t = pseudo();
-      else if (withNew.length >= 5 && r < 0.8) t = pick(withNew);
-      else t = pick(words.length ? words : [pseudo()]);
-      if (t !== last) break;
-    }
-    last = t;
-    if (level.caps && Math.random() < 0.5) t = t[0].toUpperCase() + t.slice(1);
-    if (level.punct && Math.random() < 0.15) t += pick([',', '.']);
-    return t;
-  };
-}
-
-function makeText(next, target) {
-  const tokens = [];
-  let len = 0;
-  while (len < target) { const t = next(); tokens.push(t); len += t.length + 1; }
-  return tokens.join(' ');
-}
-
 // ---------- Saved progress ----------
-const STORE = 'keyy.v1';
-let S = { stars: {}, best: {}, keys: {}, rainBest: 0, guide: true };
-try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) {}
+// S.keys[k] = { r: last results (1 right, 0 wrong), t: last times in ms }
+const STORE = 'keyy.v2';
+const freshState = () => ({ unlocked: 1, keys: {}, rainBest: 0, guide: true });
+let S = freshState();
+try {
+  const old = JSON.parse(localStorage.getItem('keyy.v1') || '{}');
+  if (old.rainBest) S.rainBest = old.rainBest;
+  if (old.guide === false) S.guide = false;
+  Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}'));
+} catch (e) {}
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} };
 
-function recordKey(ch, ok) {
+function pushStat(k, ok, ms) {
+  const rec = S.keys[k] || (S.keys[k] = { r: [], t: [] });
+  rec.r.push(ok ? 1 : 0);
+  if (rec.r.length > NEED_PRESSES) rec.r.shift();
+  if (ok && ms != null) {
+    rec.t.push(Math.min(Math.round(ms), 3000));
+    if (rec.t.length > NEED_PRESSES) rec.t.shift();
+  }
+}
+function recordKey(ch, ok, ms) {
   const info = keyInfo(ch);
   if (!info || info.base === ' ') return;
-  const k = S.keys[info.base] || (S.keys[info.base] = { h: 0, m: 0 });
-  ok ? k.h++ : k.m++;
+  pushStat(info.base, ok, ms);
+  if (info.shift) pushStat('shift', ok, ms);
 }
-function maxLevel() {
-  if (S.unlockAll) return LEVELS.length - 1;
-  let i = 0;
-  while (i < LEVELS.length - 1 && S.stars[i]) i++;
-  return i;
+function keyNumbers(k) {
+  const rec = S.keys[k];
+  if (!rec || !rec.r.length) return { n: 0, acc: 0, ms: Infinity };
+  const acc = rec.r.reduce((a, b) => a + b, 0) / rec.r.length;
+  const t = [...rec.t].sort((a, b) => a - b);
+  const ms = t.length ? t[Math.floor(t.length / 2)] : Infinity;
+  return { n: rec.r.length, acc, ms };
 }
-function weakKeys() {
-  const allowed = LEVELS[maxLevel()].allowed;
-  return Object.entries(S.keys)
-    .filter(([k, v]) => allowed.has(k) && v.h + v.m >= 8 && v.m / (v.h + v.m) > 0.05)
-    .sort((a, b) => b[1].m / (b[1].h + b[1].m) - a[1].m / (a[1].h + a[1].m))
-    .slice(0, 4).map(e => e[0]);
+// How ready a key is, from 0 to 1. A key is mastered at 1.
+function ready(k) {
+  const { n, acc, ms } = keyNumbers(k);
+  if (!n) return 0;
+  return Math.min(1, n / NEED_PRESSES) * Math.min(1, acc / NEED_ACCURACY) * Math.min(1, NEED_MS / ms);
+}
+function keyStatus(k) {
+  const { n, acc, ms } = keyNumbers(k);
+  if (n < NEED_PRESSES) return `${n} of ${NEED_PRESSES} presses`;
+  if (acc < NEED_ACCURACY) return `${Math.round(acc * 100)}% accuracy`;
+  return ms > NEED_MS ? 'too slow' : 'mastered';
+}
+const openKeys = () => STAGES.slice(0, S.unlocked).flat();
+// The weakest open key. With a tie, the newest key wins.
+function focusKey() {
+  let best = null, low = 2;
+  for (const k of openKeys()) { const r = ready(k); if (r <= low) { low = r; best = k; } }
+  return low < 1 ? best : null;
+}
+function openWords() {
+  const allowed = new Set(openKeys());
+  return WORDS.filter(w => [...w].every(c => allowed.has(c)));
+}
+
+// ---------- Practice text ----------
+function introFor(newKeys) {
+  if (newKeys.includes('a') && newKeys.includes('j')) return 'asdf jkl fdsa lkj ';
+  let s = '';
+  for (const k of newKeys) {
+    if (k === 'shift') continue;
+    const h = HOME_KEY[FINGER[k]];
+    s += k + k + k + ' ';
+    if (h && !isDigit(k)) s += h + k + h + ' ';
+  }
+  return s;
+}
+function practiceText() {
+  const open = openKeys();
+  const focus = focusKey();
+  const words = openWords();
+  const withFocus = focus && isLetter(focus) ? words.filter(w => w.includes(focus)) : [];
+  const digits = open.filter(isDigit);
+  const punct = open.filter(k => k === ',' || k === '.');
+  const caps = open.includes('shift');
+  const tokens = [];
+  let len = 0, last = '';
+  while (len < 105) {
+    let t;
+    const r = Math.random();
+    if (digits.length && r < (isDigit(focus) ? 0.4 : 0.1)) {
+      t = Array.from({ length: 2 + rand(3) }, () => pick(digits));
+      if (isDigit(focus)) t[rand(t.length)] = focus;
+      t = t.join('');
+    } else if (focus && isLetter(focus) && withFocus.length < 3 && r < 0.45) {
+      // Too few real words use this key yet, so add a short drill.
+      const other = pick(open.filter(k => isLetter(k) && k !== focus));
+      t = pick([focus + other + focus, other + focus + other, focus + focus + other]);
+    } else {
+      for (let i = 0; i < 6; i++) {
+        t = pick(withFocus.length >= 3 && Math.random() < 0.7 ? withFocus : words);
+        if (t !== last) break;
+      }
+      last = t;
+      if (caps && Math.random() < (focus === 'shift' ? 0.6 : 0.25)) t = t[0].toUpperCase() + t.slice(1);
+      if (punct.length && Math.random() < (punct.includes(focus) ? 0.45 : 0.12)) t += punct.includes(focus) ? focus : pick(punct);
+    }
+    tokens.push(t);
+    len += t.length + 1;
+  }
+  return introFor(open.filter(k => !S.keys[k])) + tokens.join(' ');
+}
+function openPairs() {
+  const allowed = new Set(openKeys());
+  return PAIRS.filter(p => allowed.has(p[0]) && allowed.has(p[1]));
+}
+function pairsText() {
+  const words = openWords();
+  const pairs = openPairs().sort(() => Math.random() - 0.5);
+  const parts = [];
+  let len = 0;
+  for (const p of pairs) {
+    const having = words.filter(w => w.includes(p)).sort(() => Math.random() - 0.5).slice(0, 3);
+    const part = [p, p, ...having].join(' ');
+    parts.push(part);
+    len += part.length + 1;
+    if (len > 115) break;
+  }
+  return parts.join(' ');
 }
 
 // ---------- Screens ----------
 let screen = 'home';
-let mode = null;      // 'lesson', 'weak' or 'rain'
+let mode = null;      // 'practice', 'pairs' or 'rain'
 let lesson = null;
 let rain = null;
 let primaryAction = null;
@@ -395,29 +475,32 @@ function show(name) {
   if (document.activeElement) document.activeElement.blur();
   window.scrollTo(0, 0);
 }
-const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+
+function renderChips(box, keys) {
+  const open = new Set(openKeys());
+  const focus = focusKey();
+  box.textContent = '';
+  for (const k of keys) {
+    const el = document.createElement('div');
+    const r = open.has(k) ? ready(k) : 0;
+    el.className = 'chip' + (k === 'shift' ? ' shift' : '') + (!open.has(k) ? ' locked' : r >= 1 ? ' done' : '') + (k === focus ? ' focus' : '');
+    el.textContent = k === 'shift' ? 'Aa' : k;
+    const f = k === 'shift' ? 4 : FINGER[k];
+    el.style.setProperty('--c', `var(--f${f})`);
+    el.style.setProperty('--p', Math.round(r * 100) + '%');
+    el.title = keyLabel(k) + ': ' + (open.has(k) ? keyStatus(k) : 'locked');
+    box.append(el);
+  }
+}
 
 function renderHome() {
   mode = null; lesson = null; rain = null;
-  const box = $('levels');
-  box.textContent = '';
-  LEVELS.forEach((l, i) => {
-    const open = i === 0 || S.stars[i - 1] || S.unlockAll;
-    const b = document.createElement('button');
-    b.className = 'level' + (open ? '' : ' locked');
-    b.disabled = !open;
-    const n = document.createElement('div'); n.className = 'n'; n.textContent = 'Lesson ' + (i + 1);
-    const t = document.createElement('div'); t.className = 't'; t.textContent = l.title;
-    const s = document.createElement('div'); s.className = 's'; s.textContent = open ? starText(S.stars[i] || 0) : 'Locked';
-    b.append(n, t, s);
-    b.onclick = () => startLesson(i);
-    box.append(b);
-  });
-  const weak = weakKeys();
-  $('btnWeak').disabled = !weak.length;
-  $('weakInfo').textContent = weak.length
-    ? 'Your weakest keys: ' + weak.map(k => k.toUpperCase()).join(' ')
-    : 'The drill opens after you play a few lessons and miss some keys.';
+  renderChips($('chips'), ALL_KEYS);
+  const focus = focusKey();
+  const open = openKeys().length;
+  $('status').textContent = `Open keys: ${open} of ${ALL_KEYS.length}. ` +
+    (focus ? `Your next round focuses on ${keyLabel(focus)}.` : 'You have mastered every key.');
+  $('btnPairs').disabled = openPairs().length < 3;
   $('optGuide').checked = S.guide;
   show('home');
 }
@@ -426,21 +509,19 @@ function setStats(labels) {
   labels.forEach((l, i) => { $('l' + (i + 1)).textContent = l; $('s' + (i + 1)).textContent = '0'; });
 }
 
-// ---------- Lesson and drill play ----------
-function startLesson(idx) {
-  mode = 'lesson';
-  const text = makeText(tokener(idx), idx < 5 ? 80 : 120);
-  beginText(text, 'Lesson ' + (idx + 1) + ': ' + LEVELS[idx].title, idx);
+// ---------- Practice and drill play ----------
+function startPractice() {
+  mode = 'practice';
+  const focus = focusKey();
+  beginText(practiceText(), focus ? 'Practice: focus on ' + keyLabel(focus) : 'Practice');
 }
-function startWeak() {
-  const keys = weakKeys();
-  if (!keys.length) return;
-  mode = 'weak';
-  const text = makeText(tokener(maxLevel(), keys.join('')), 120);
-  beginText(text, 'Weak keys drill: ' + keys.map(k => k.toUpperCase()).join(' '), null);
+function startPairs() {
+  if (openPairs().length < 3) return;
+  mode = 'pairs';
+  beginText(pairsText(), 'Common pairs drill');
 }
-function beginText(text, title, idx) {
-  lesson = { idx, text, pos: 0, errs: new Set(), start: 0, combo: 0, spans: [] };
+function beginText(text, title) {
+  lesson = { text, pos: 0, errs: new Set(), start: 0, last: 0, combo: 0, spans: [] };
   const box = $('text');
   box.textContent = '';
   for (const ch of text) {
@@ -470,13 +551,16 @@ function lessonKey(key) {
   const L = lesson;
   const want = L.text[L.pos];
   const span = L.spans[L.pos];
-  if (!L.start) L.start = performance.now();
+  const now = performance.now();
+  if (!L.start) L.start = now;
   if (key === want) {
-    recordKey(want, true);
+    // A key counts as right only when the first try was right.
+    if (!L.errs.has(L.pos)) recordKey(want, true, L.pos ? now - L.last : null);
+    L.last = now;
     span.className = L.errs.has(L.pos) ? 'err' : 'done';
     L.pos++;
     L.combo++;
-    if (L.pos === L.text.length) return finishLesson();
+    if (L.pos === L.text.length) return finishText();
     L.spans[L.pos].className = 'cur';
     showHint(L.text[L.pos]);
   } else {
@@ -491,35 +575,32 @@ function lessonKey(key) {
   $('s2').textContent = n.wpm;
   $('s3').textContent = L.combo;
 }
-function finishLesson() {
+function finishText() {
   const L = lesson;
   const { acc, wpm } = lessonNumbers();
   const missed = [...new Set([...L.errs].map(i => L.text[i]).filter(c => c !== ' '))];
-  const stars = acc >= 97 && wpm >= 25 ? 3 : acc >= 95 ? 2 : acc >= 90 ? 1 : 0;
-  const isLesson = mode === 'lesson';
-  if (isLesson) {
-    S.stars[L.idx] = Math.max(S.stars[L.idx] || 0, stars);
-    S.best[L.idx] = Math.max(S.best[L.idx] || 0, wpm);
+  let opened = null;
+  if (S.unlocked < STAGES.length && openKeys().every(k => ready(k) >= 1)) {
+    opened = STAGES[S.unlocked];
+    S.unlocked++;
   }
   save();
   showHint(null);
 
-  $('resTitle').textContent = isLesson ? (stars ? 'Lesson passed' : 'Not yet') : 'Drill done';
-  $('resStars').textContent = isLesson ? starText(stars) : '';
+  const learning = openKeys().filter(k => ready(k) < 1 && !(opened && opened.includes(k)));
+  $('resTitle').textContent = opened ? 'New: ' + opened.map(keyLabel).join(' ') : 'Round done';
   setBig([[acc + '%', 'accuracy'], [wpm, 'words per minute']]);
-  $('resMsg').textContent = !isLesson ? ''
-    : stars === 3 ? 'Three stars. You have mastered this lesson.'
-    : stars === 0 ? 'You need 90% accuracy to pass. Slow down and try again.'
-    : 'For three stars, reach 97% accuracy and 25 words per minute.';
-  $('resWeak').textContent = missed.length ? 'Keys you missed: ' + missed.join(' ') : 'You missed no keys.';
-
-  const hasNext = isLesson && stars > 0 && L.idx < LEVELS.length - 1;
-  const idx = L.idx;
-  const retry = () => (isLesson ? startLesson(idx) : startWeak());
-  $('resRetry').onclick = retry;
-  $('resRetry').classList.toggle('hidden', !hasNext);
-  $('resNext').textContent = (hasNext ? 'Next lesson' : 'Try again') + ' (Enter)';
-  primaryAction = hasNext ? () => startLesson(idx + 1) : retry;
+  $('resMsg').textContent = opened
+    ? 'You mastered every open key. Your next round introduces ' + (opened[0] === 'shift' ? 'capital letters' : opened.map(keyLabel).join(', ')) + '.'
+    : !focusKey() ? 'You have mastered every key.'
+    : acc < 90 ? 'Slow down. Accuracy matters more than speed.' : '';
+  renderChips($('resChips'), openKeys());
+  $('resLearning').textContent = learning.length
+    ? 'Still learning: ' + learning.slice(0, 6).map(k => `${keyLabel(k)} (${keyStatus(k)})`).join(', ')
+    : '';
+  $('resWeak').textContent = missed.length ? 'Keys you missed this round: ' + missed.join(' ') : 'You missed no keys this round.';
+  $('resNext').textContent = 'Next round (Enter)';
+  primaryAction = mode === 'pairs' ? startPairs : startPractice;
   $('resNext').onclick = primaryAction;
   show('result');
 }
@@ -540,8 +621,9 @@ function startRain() {
   mode = 'rain';
   const area = $('rain');
   area.querySelectorAll('.word').forEach(el => el.remove());
+  const words = openWords();
   rain = { items: [], target: null, score: 0, lives: 3, combo: 0, elapsed: 0, nextSpawn: 0,
-    last: performance.now(), next: tokener(maxLevel()) };
+    last: performance.now(), next: () => pick(words) };
   $('text').classList.add('hidden');
   area.classList.remove('hidden');
   $('guide').classList.toggle('hidden', !S.guide);
@@ -618,7 +700,6 @@ function rainKey(key) {
     if (item) { R.target = item; item.el.classList.add('target'); }
   }
   if (item && item.text[item.typed] === key) {
-    recordKey(key, true);
     item.typed++;
     R.combo++;
     item.done.textContent = item.text.slice(0, item.typed);
@@ -628,8 +709,6 @@ function rainKey(key) {
       rainRemove(item);
     }
   } else {
-    const wanted = item || rainLowest();
-    if (wanted) recordKey(wanted.text[wanted.typed], false);
     R.combo = 0;
     flashWrong(key);
   }
@@ -644,11 +723,11 @@ function finishRain() {
   save();
   showHint(null);
   $('resTitle').textContent = 'Game over';
-  $('resStars').textContent = '';
   setBig([[score, 'score'], [S.rainBest, 'your best']]);
   $('resMsg').textContent = record && score ? 'New best score.' : '';
+  $('resChips').textContent = '';
+  $('resLearning').textContent = '';
   $('resWeak').textContent = '';
-  $('resRetry').classList.add('hidden');
   $('resNext').textContent = 'Play again (Enter)';
   primaryAction = startRain;
   $('resNext').onclick = primaryAction;
@@ -658,12 +737,18 @@ function finishRain() {
 // ---------- Input ----------
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (screen === 'home') {
+    const onButton = document.activeElement.tagName === 'BUTTON';
+    const action = e.key === 'Enter' && !onButton ? startPractice
+      : { 1: startPractice, 2: startRain, 3: startPairs, g: toggleGuide }[e.key.toLowerCase()];
+    if (action) { e.preventDefault(); e.stopImmediatePropagation(); action(); }
+    return;
+  }
   if (screen === 'result') {
     if (e.key === 'Enter') { e.preventDefault(); primaryAction(); }
     else if (e.key === 'Escape') renderHome();
     return;
   }
-  if (screen !== 'play') return;
   if (e.key === 'Escape') { save(); showHint(null); renderHome(); return; }
   if (e.key.length !== 1) return;
   // Stop browser extensions with one-key shortcuts from taking the key.
@@ -672,17 +757,22 @@ addEventListener('keydown', e => {
   if (mode === 'rain') rainKey(e.key); else lessonKey(e.key);
 }, true);
 
+function toggleGuide() {
+  S.guide = !S.guide;
+  $('optGuide').checked = S.guide;
+  save();
+}
+$('btnPractice').onclick = startPractice;
 $('btnRain').onclick = startRain;
-$('btnWeak').onclick = startWeak;
+$('btnPairs').onclick = startPairs;
 $('resMenu').onclick = renderHome;
 $('optGuide').onchange = e => { S.guide = e.target.checked; save(); };
-$('btnUnlock').onclick = () => {
-  S.unlockAll = true;
-  save(); renderHome();
-};
+$('btnUnlock').onclick = () => { S.unlocked = STAGES.length; save(); renderHome(); };
 $('btnReset').onclick = () => {
-  if (!confirm('Delete all your stars and key statistics?')) return;
-  S = { stars: {}, best: {}, keys: {}, rainBest: 0, guide: S.guide };
+  if (!confirm('Delete all your progress?')) return;
+  const guide = S.guide;
+  S = freshState();
+  S.guide = guide;
   save(); renderHome();
 };
 
